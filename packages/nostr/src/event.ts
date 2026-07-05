@@ -1,4 +1,6 @@
 import type { EventTemplate } from 'nostr-tools/core';
+import type { EventPointer } from 'nostr-tools/nip19';
+import { Metadata, RelayList, ShortTextNote } from 'nostr-tools/kinds';
 
 function now(): number {
 	return Math.floor(Date.now() / 1000);
@@ -12,34 +14,32 @@ export interface TextNoteOptions {
 
 export function buildTextNote(options: TextNoteOptions): EventTemplate {
 	return {
-		kind: 1,
+		kind: ShortTextNote,
 		content: options.content,
 		tags: options.tags ?? [],
 		created_at: options.createdAt ?? now(),
 	};
 }
 
-export interface EventPointer {
-	id: string;
-	pubkey?: string;
-	relay?: string;
-}
+export type { EventPointer };
 
 /**
  * NIP-10 marked tags for a reply. When root is omitted the reply target is
- * treated as the thread root.
+ * treated as the thread root. Pointers use the nostr-tools EventPointer shape
+ * ({ id, relays?, author? }).
  */
 export function replyTags(reply: EventPointer, root?: EventPointer): string[][] {
+	const relayHint = (p: EventPointer): string => p.relays?.[0] ?? '';
 	const tags: string[][] = [];
 	if (root) {
-		tags.push(['e', root.id, root.relay ?? '', 'root', ...(root.pubkey ? [root.pubkey] : [])]);
-		tags.push(['e', reply.id, reply.relay ?? '', 'reply', ...(reply.pubkey ? [reply.pubkey] : [])]);
+		tags.push(['e', root.id, relayHint(root), 'root', ...(root.author ? [root.author] : [])]);
+		tags.push(['e', reply.id, relayHint(reply), 'reply', ...(reply.author ? [reply.author] : [])]);
 	} else {
-		tags.push(['e', reply.id, reply.relay ?? '', 'root', ...(reply.pubkey ? [reply.pubkey] : [])]);
+		tags.push(['e', reply.id, relayHint(reply), 'root', ...(reply.author ? [reply.author] : [])]);
 	}
-	const pubkeys = new Set([root?.pubkey, reply.pubkey].filter((p): p is string => Boolean(p)));
-	for (const pubkey of pubkeys) {
-		tags.push(['p', pubkey]);
+	const authors = new Set([root?.author, reply.author].filter((p): p is string => Boolean(p)));
+	for (const author of authors) {
+		tags.push(['p', author]);
 	}
 	return tags;
 }
@@ -58,7 +58,7 @@ export interface ProfileMetadata {
 
 export function buildMetadata(profile: ProfileMetadata, createdAt?: number): EventTemplate {
 	return {
-		kind: 0,
+		kind: Metadata,
 		content: JSON.stringify(profile),
 		tags: [],
 		created_at: createdAt ?? now(),
@@ -77,7 +77,7 @@ export function buildRelayList(
 	createdAt?: number,
 ): EventTemplate {
 	return {
-		kind: 10002,
+		kind: RelayList,
 		content: '',
 		tags: relays.map((relay) => {
 			if (relay.read && !relay.write) return ['r', relay.url, 'read'];

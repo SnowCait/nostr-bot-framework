@@ -1,4 +1,5 @@
 export type { EventTemplate, NostrEvent } from 'nostr-tools/core';
+export { Metadata, ShortTextNote, RelayList, HTTPAuth } from 'nostr-tools/kinds';
 export {
 	PrivateKeySigner,
 	normalizeSecretKey,
@@ -30,7 +31,6 @@ export {
 	verifyNip98Request,
 	buildNip98Token,
 	Nip98Error,
-	NIP98_KIND,
 	type VerifyNip98Options,
 	type VerifiedNip98,
 	type BuildNip98TokenOptions,

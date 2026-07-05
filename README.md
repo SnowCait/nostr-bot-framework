@@ -127,6 +127,13 @@ npx sns-bot-setup-master-key --remote                     # or --local for .dev.
 - **If the master key is lost**: re-set it with `wrangler secret put MASTER_KEY` if you have the backup (D1 is untouched). Without a backup the ciphertexts are unrecoverable — set a new master key and re-register each bot's nsec from the admin UI (the UI flags affected bots). Published posts, dedup state, and profiles are stored in plaintext or as public data and survive intact.
 - The kind 0 profile and kind 10002 relay list are canonical in D1 and only pushed to relays. Edits made from other Nostr clients are not read back and will be overwritten on the next publish — edit bot profiles from the admin UI only.
 
+## Publishing behavior
+
+- **Relay list drives publishing.** A bot publishes to the write relays of its stored kind 10002 (edited in the admin UI); the `relays` passed to `nostrDestination` are the seed/fallback used until a relay list is saved.
+- **Retries are per destination.** Each `(bot, destination)` tracks its own dedup state, so a failure on one destination is retried there without re-posting to the others.
+- **Multi-event builds retry as a unit.** A `build` that returns several events (or `thread: true`) marks the item published only if every event reaches a relay; on partial failure the item is retried, which may re-deliver the events that already succeeded. Use a single-event build when you need exactly-once delivery.
+- **Concurrent runs are guarded best-effort.** A short-lived D1 lock per `(bot, destination)` narrows the window for double-posting when a cron overlaps a manual run. D1 has no cross-request transaction, so it is a mitigation, not a strict guarantee.
+
 ## Using Cloudflare Secrets Store instead
 
 The master key helper also accepts a [Secrets Store](https://developers.cloudflare.com/secrets-store/) binding (it detects a `get()` method at runtime):

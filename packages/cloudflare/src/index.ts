@@ -2,14 +2,16 @@ export {
 	importMasterKey,
 	encryptString,
 	decryptString,
+	timingSafeEqualString,
 	type MasterKeySource,
 	type EncryptedValue,
 } from './crypto.js';
-export { D1StateStore } from './d1-state-store.js';
+export { D1StateStore, D1RunLock } from './d1-state-store.js';
 export { d1PhraseSource, d1FeedList, type D1SourceOptions } from './d1-source.js';
 export {
 	D1NostrKeyStore,
 	D1NostrEventStore,
+	writeRelaysFromRelayList,
 	type NostrKeyStatus,
 	type StoredNostrEvent,
 } from './nostr-store.js';

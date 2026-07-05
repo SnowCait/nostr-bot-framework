@@ -39,7 +39,11 @@ export interface RssSourceOptions {
 	/** Template for the default post text. Default: '{title}\n{link}'. */
 	template?: string;
 	timeoutMs?: number;
-	/** Max items kept per feed for the 304-cache. Default: 100. */
+	/**
+	 * Max items retained per feed for the conditional-GET cache. This bounds how
+	 * much unposted backlog survives a 304 response, so it must exceed the number
+	 * of items that can pile up between runs (feed volume vs maxPerRun). Default: 500.
+	 */
 	cacheLimit?: number;
 }
 
@@ -89,7 +93,7 @@ async function fetchFeed(
 export function rssSource(options: RssSourceOptions): Source {
 	const template = options.template ?? '{title}\n{link}';
 	const timeoutMs = options.timeoutMs ?? 10_000;
-	const cacheLimit = options.cacheLimit ?? 100;
+	const cacheLimit = options.cacheLimit ?? 500;
 	return {
 		backfill: 'skip',
 		async fetch(ctx: BotContext): Promise<SourceItem[]> {

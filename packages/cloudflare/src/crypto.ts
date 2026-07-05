@@ -55,3 +55,15 @@ export async function decryptString(key: CryptoKey, value: EncryptedValue): Prom
 	);
 	return new TextDecoder().decode(plaintext);
 }
+
+/** Constant-time string comparison to avoid leaking secrets via timing. */
+export function timingSafeEqualString(a: string, b: string): boolean {
+	const ba = new TextEncoder().encode(a);
+	const bb = new TextEncoder().encode(b);
+	// Compare against a fixed-length buffer so length differences don't short-circuit.
+	let diff = ba.length ^ bb.length;
+	for (let i = 0; i < ba.length; i++) {
+		diff |= ba[i]! ^ (bb[i] ?? 0);
+	}
+	return diff === 0;
+}

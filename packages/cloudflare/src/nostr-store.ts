@@ -1,11 +1,19 @@
-import type { CredentialResolver } from '@sns-bot-framework/core';
+import type { CredentialResolver, RelayResolver } from '@sns-bot-framework/core';
 import {
 	credentialInfo,
 	npubFromPubkey,
+	RelayList,
 	secretKeyToHex,
 	type NostrEvent,
 } from '@sns-bot-framework/nostr';
 import { decryptString, encryptString, importMasterKey, type MasterKeySource } from './crypto.js';
+
+/** Write relays from a NIP-65 (kind 10002) event: 'r' tags with no marker or 'write'. */
+export function writeRelaysFromRelayList(event: NostrEvent): string[] {
+	return event.tags
+		.filter((tag) => tag[0] === 'r' && tag[1] && (tag[2] === undefined || tag[2] === 'write'))
+		.map((tag) => tag[1]!);
+}
 
 export interface NostrKeyStatus {
 	registered: boolean;
@@ -154,6 +162,22 @@ export class D1NostrKeyStore {
 	credentialResolver(): CredentialResolver {
 		return async (botId, destination) =>
 			destination.type === 'nostr' ? this.resolveSecret(botId, destination.id) : null;
+	}
+
+	/** Resolves publish targets from the stored kind 10002 write relays, or null. */
+	relayResolver(): RelayResolver {
+		return async (botId, destination) => {
+			if (destination.type !== 'nostr') return null;
+			const pubkey = await this.pubkeyFor(botId, destination.id);
+			if (!pubkey) return null;
+			const row = await this.db
+				.prepare('SELECT event FROM nostr_events WHERE pubkey = ? AND kind = ?')
+				.bind(pubkey, RelayList)
+				.first<{ event: string }>();
+			if (!row) return null;
+			const relays = writeRelaysFromRelayList(JSON.parse(row.event) as NostrEvent);
+			return relays.length > 0 ? relays : null;
+		};
 	}
 }
 

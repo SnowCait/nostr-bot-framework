@@ -10,15 +10,20 @@ describe('buildTextNote', () => {
 
 describe('replyTags', () => {
 	it('marks a direct reply as root', () => {
-		const tags = replyTags({ id: 'e1', pubkey: 'p1' });
+		const tags = replyTags({ id: 'e1', author: 'p1' });
 		expect(tags).toEqual([
 			['e', 'e1', '', 'root', 'p1'],
 			['p', 'p1'],
 		]);
 	});
 
+	it('uses the first relay hint from the pointer', () => {
+		const tags = replyTags({ id: 'e1', author: 'p1', relays: ['wss://r.example'] });
+		expect(tags[0]).toEqual(['e', 'e1', 'wss://r.example', 'root', 'p1']);
+	});
+
 	it('marks root and reply separately in a thread', () => {
-		const tags = replyTags({ id: 'e2', pubkey: 'p2' }, { id: 'e1', pubkey: 'p1' });
+		const tags = replyTags({ id: 'e2', author: 'p2' }, { id: 'e1', author: 'p1' });
 		expect(tags[0]).toEqual(['e', 'e1', '', 'root', 'p1']);
 		expect(tags[1]).toEqual(['e', 'e2', '', 'reply', 'p2']);
 		expect(tags.slice(2)).toEqual([

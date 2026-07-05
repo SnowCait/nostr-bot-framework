@@ -15,6 +15,8 @@ export interface BotContext {
 export interface DestinationContext extends BotContext {
 	destinationId: string;
 	getCredential(): Promise<string | null>;
+	/** Optional per-destination publish targets (e.g. relays), overriding built-in defaults. */
+	getRelays?(): Promise<string[] | null>;
 }
 
 export interface PublishResult {
@@ -22,6 +24,15 @@ export interface PublishResult {
 	ok: boolean;
 	remoteId?: string;
 	error?: string;
+}
+
+export interface PublishOutcome {
+	/** Whether the item may be marked as published (consumed and never retried). */
+	ok: boolean;
+	/** Representative remote id recorded for the item. */
+	remoteId?: string;
+	/** Per-target details for reporting. Empty means an intentional skip. */
+	results: PublishResult[];
 }
 
 export interface CredentialInfo {
@@ -32,10 +43,10 @@ export interface Destination {
 	readonly id: string;
 	readonly type: string;
 	/**
-	 * Publish one item. An empty array means the item was intentionally
-	 * skipped and must be treated as consumed (it will not be retried).
+	 * Publish one item. `ok: true` with an empty `results` means the item was
+	 * intentionally skipped and must be treated as consumed.
 	 */
-	publish(item: SourceItem, ctx: DestinationContext): Promise<PublishResult[]>;
+	publish(item: SourceItem, ctx: DestinationContext): Promise<PublishOutcome>;
 	validateCredential?(value: string): Promise<CredentialInfo>;
 }
 
@@ -43,6 +54,14 @@ export type CredentialResolver = (
 	botId: string,
 	destination: Destination,
 ) => Promise<string | null>;
+
+export type RelayResolver = (botId: string, destination: Destination) => Promise<string[] | null>;
+
+/** Best-effort mutual exclusion for a bot+destination run. */
+export interface RunLock {
+	acquire(botId: string, destinationId: string): Promise<boolean>;
+	release(botId: string, destinationId: string): Promise<void>;
+}
 
 export interface PublishedEntry {
 	itemId: string;

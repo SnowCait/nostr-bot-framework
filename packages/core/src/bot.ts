@@ -6,6 +6,8 @@ import type {
 	Destination,
 	DestinationContext,
 	DestinationReport,
+	RelayResolver,
+	RunLock,
 	SourceItem,
 	StateStore,
 } from './types.js';
@@ -32,6 +34,8 @@ export interface RunOptions {
 	state: StateStore;
 	env?: unknown;
 	credentials?: CredentialResolver;
+	relays?: RelayResolver;
+	lock?: RunLock;
 	dryRun?: boolean;
 	log?: (message: string, detail?: unknown) => void;
 }
@@ -52,7 +56,7 @@ async function runDestination(
 	destination: Destination,
 	items: SourceItem[],
 	ctx: BotContext,
-	credentials: CredentialResolver | undefined,
+	options: RunOptions,
 ): Promise<DestinationReport> {
 	const report: DestinationReport = {
 		destinationId: destination.id,
@@ -61,12 +65,33 @@ async function runDestination(
 		errors: [],
 	};
 	const { state } = ctx;
+	const { credentials, relays } = options;
 	const dctx: DestinationContext = {
 		...ctx,
 		destinationId: destination.id,
 		getCredential: () => (credentials ? credentials(bot.id, destination) : Promise.resolve(null)),
+		getRelays: () => (relays ? relays(bot.id, destination) : Promise.resolve(null)),
 	};
 
+	if (options.lock && !(await options.lock.acquire(bot.id, destination.id))) {
+		report.errors.push('skipped: another run holds the lock');
+		return report;
+	}
+	try {
+		return await runDestinationInner(bot, destination, items, dctx, report);
+	} finally {
+		if (options.lock) await options.lock.release(bot.id, destination.id);
+	}
+}
+
+async function runDestinationInner(
+	bot: BotDefinition,
+	destination: Destination,
+	items: SourceItem[],
+	dctx: DestinationContext,
+	report: DestinationReport,
+): Promise<DestinationReport> {
+	const state = dctx.state;
 	const backfill = bot.backfill ?? bot.source.backfill ?? 'post';
 	const initKey = `init:${destination.id}`;
 	if (backfill === 'skip' && (await state.get(bot.id, initKey)) === null) {
@@ -79,7 +104,7 @@ async function runDestination(
 		}
 		await state.set(bot.id, initKey, String(Date.now()));
 		report.skipped = items.length;
-		ctx.log(`initialized ${destination.id}: marked ${items.length} existing items as consumed`);
+		dctx.log(`initialized ${destination.id}: marked ${items.length} existing items as consumed`);
 		return report;
 	}
 
@@ -113,23 +138,22 @@ async function runDestination(
 	for (const id of selectedIds) {
 		const item = byId.get(id)!;
 		try {
-			const results = await destination.publish(item, dctx);
-			if (results.length === 0) {
+			const outcome = await destination.publish(item, dctx);
+			if (outcome.results.length === 0 && outcome.ok) {
 				// Intentional skip: consume the item without posting.
 				await state.markPublished(bot.id, destination.id, [{ itemId: id }]);
 				report.skipped += 1;
 				continue;
 			}
-			const succeeded = results.find((result) => result.ok);
-			if (succeeded) {
+			if (outcome.ok) {
 				const entry: { itemId: string; remoteId?: string } = { itemId: id };
-				if (succeeded.remoteId !== undefined) entry.remoteId = succeeded.remoteId;
+				if (outcome.remoteId !== undefined) entry.remoteId = outcome.remoteId;
 				await state.markPublished(bot.id, destination.id, [entry]);
 			}
-			report.posted.push({ itemId: id, results });
-			if (!succeeded) {
+			report.posted.push({ itemId: id, results: outcome.results });
+			if (!outcome.ok) {
 				report.errors.push(
-					`item ${id}: all targets failed (${results.map((r) => r.error).join('; ')})`,
+					`item ${id}: not fully published (${outcome.results.map((r) => r.error ?? 'ok').join('; ')})`,
 				);
 			}
 		} catch (error) {
@@ -176,7 +200,7 @@ export async function runBot(bot: BotDefinition, options: RunOptions): Promise<B
 	}
 
 	for (const destination of bot.destinations) {
-		destinations.push(await runDestination(bot, destination, items, ctx, options.credentials));
+		destinations.push(await runDestination(bot, destination, items, ctx, options));
 	}
 
 	return {

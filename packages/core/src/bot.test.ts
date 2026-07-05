@@ -2,11 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { defineBot, runBot } from './bot.js';
 import { MemoryStateStore } from './state.js';
 import { staticListSource } from './source.js';
-import type { Destination, PublishResult, SourceItem } from './types.js';
+import type { Destination, PublishOutcome, SourceItem } from './types.js';
 
 function mockDestination(
 	overrides: Partial<Pick<Destination, 'id' | 'type'>> & {
-		result?: (item: SourceItem) => PublishResult[];
+		result?: (item: SourceItem) => PublishOutcome;
 	} = {},
 ): Destination & { published: SourceItem[] } {
 	const published: SourceItem[] = [];
@@ -14,11 +14,15 @@ function mockDestination(
 		id: overrides.id ?? 'mock',
 		type: overrides.type ?? 'mock',
 		published,
-		async publish(item) {
+		async publish(item): Promise<PublishOutcome> {
 			published.push(item);
-			return overrides.result
-				? overrides.result(item)
-				: [{ target: 'mock', ok: true, remoteId: `r-${item.id}` }];
+			return (
+				overrides.result?.(item) ?? {
+					ok: true,
+					remoteId: `r-${item.id}`,
+					results: [{ target: 'mock', ok: true }],
+				}
+			);
 		},
 	};
 }
@@ -72,7 +76,9 @@ describe('runBot', () => {
 		const flaky = mockDestination({
 			id: 'flaky',
 			result: () =>
-				failing ? [{ target: 'relay', ok: false, error: 'down' }] : [{ target: 'relay', ok: true }],
+				failing
+					? { ok: false, results: [{ target: 'relay', ok: false, error: 'down' }] }
+					: { ok: true, results: [{ target: 'relay', ok: true }] },
 		});
 		const bot = defineBot({
 			id: 'multi',
@@ -89,9 +95,9 @@ describe('runBot', () => {
 		expect(flaky.published).toHaveLength(2);
 	});
 
-	it('treats empty publish results as consumed (skip)', async () => {
+	it('treats an ok skip (empty results) as consumed', async () => {
 		const state = new MemoryStateStore();
-		const dest = mockDestination({ result: () => [] });
+		const dest = mockDestination({ result: () => ({ ok: true, results: [] }) });
 		const bot = defineBot({
 			id: 'skipper',
 			source: staticListSource(['a']),
@@ -100,6 +106,32 @@ describe('runBot', () => {
 		await runBot(bot, { state });
 		await runBot(bot, { state });
 		expect(dest.published).toHaveLength(1);
+	});
+
+	it('does not consume an item when the outcome is not ok', async () => {
+		const state = new MemoryStateStore();
+		let failing = true;
+		const dest = mockDestination({
+			result: () =>
+				failing
+					? {
+							ok: false,
+							results: [
+								{ target: 'a', ok: true },
+								{ target: 'b', ok: false },
+							],
+						}
+					: { ok: true, results: [{ target: 'a', ok: true }] },
+		});
+		const bot = defineBot({ id: 'partial', source: staticListSource(['x']), destinations: [dest] });
+
+		const first = await runBot(bot, { state });
+		expect(first.destinations[0]!.errors).toHaveLength(1);
+		expect(dest.published).toHaveLength(1);
+
+		failing = false;
+		await runBot(bot, { state });
+		expect(dest.published).toHaveLength(2); // retried because it was never consumed
 	});
 
 	it('backfill skip consumes pre-existing items without posting', async () => {
@@ -143,9 +175,9 @@ describe('runBot', () => {
 		const dest: Destination = {
 			id: 'cred',
 			type: 'cred',
-			async publish(_item, ctx) {
+			async publish(_item, ctx): Promise<PublishOutcome> {
 				seen = await ctx.getCredential();
-				return [{ target: 't', ok: true }];
+				return { ok: true, results: [{ target: 't', ok: true }] };
 			},
 		};
 		const bot = defineBot({
@@ -158,6 +190,31 @@ describe('runBot', () => {
 			credentials: async (botId, destination) => `${botId}/${destination.id}`,
 		});
 		expect(seen).toBe('creds/cred');
+	});
+
+	it('skips a destination when the run lock cannot be acquired', async () => {
+		const state = new MemoryStateStore();
+		const dest = mockDestination();
+		const bot = defineBot({ id: 'locked', source: staticListSource(['a']), destinations: [dest] });
+		const report = await runBot(bot, {
+			state,
+			lock: { acquire: async () => false, release: async () => {} },
+		});
+		expect(dest.published).toHaveLength(0);
+		expect(report.destinations[0]!.errors[0]).toContain('lock');
+	});
+
+	it('releases the run lock after running', async () => {
+		const state = new MemoryStateStore();
+		const dest = mockDestination();
+		const bot = defineBot({ id: 'lockrel', source: staticListSource(['a']), destinations: [dest] });
+		let released = 0;
+		await runBot(bot, {
+			state,
+			lock: { acquire: async () => true, release: async () => void released++ },
+		});
+		expect(dest.published).toHaveLength(1);
+		expect(released).toBe(1);
 	});
 
 	it('reports source failures per destination', async () => {

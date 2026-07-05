@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { PrivateKeySigner } from '@sns-bot-framework/nostr';
-import { decryptString, encryptString, importMasterKey } from './crypto.js';
-import { D1StateStore } from './d1-state-store.js';
-import { D1NostrEventStore, D1NostrKeyStore } from './nostr-store.js';
+import { decryptString, encryptString, importMasterKey, timingSafeEqualString } from './crypto.js';
+import { D1RunLock, D1StateStore } from './d1-state-store.js';
+import { D1NostrEventStore, D1NostrKeyStore, writeRelaysFromRelayList } from './nostr-store.js';
 
 const db = (env as { DB: D1Database }).DB;
 const MASTER_KEY = (env as { MASTER_KEY: string }).MASTER_KEY;
@@ -22,6 +22,13 @@ describe('crypto', () => {
 
 	it('rejects short master keys', async () => {
 		await expect(importMasterKey('short')).rejects.toThrow(/at least/);
+	});
+
+	it('timingSafeEqualString compares by value regardless of length', () => {
+		expect(timingSafeEqualString('Bearer abc', 'Bearer abc')).toBe(true);
+		expect(timingSafeEqualString('Bearer abc', 'Bearer abd')).toBe(false);
+		expect(timingSafeEqualString('short', 'longer-value')).toBe(false);
+		expect(timingSafeEqualString('', '')).toBe(true);
 	});
 
 	it('accepts Secrets Store style bindings', async () => {
@@ -178,5 +185,65 @@ describe('D1NostrEventStore', () => {
 		stored = await eventStore.get(event.pubkey, 0);
 		expect(stored!.event.id).toBe(updated.id);
 		expect(stored!.publishedAt).toBeNull();
+	});
+});
+
+describe('writeRelaysFromRelayList', () => {
+	it('returns only write (unmarked or write-marked) relays', () => {
+		const relays = writeRelaysFromRelayList({
+			kind: 10002,
+			tags: [
+				['r', 'wss://a.example'],
+				['r', 'wss://b.example', 'read'],
+				['r', 'wss://c.example', 'write'],
+			],
+		} as never);
+		expect(relays).toEqual(['wss://a.example', 'wss://c.example']);
+	});
+});
+
+describe('D1NostrKeyStore.relayResolver', () => {
+	it('resolves write relays from the stored kind 10002, else null', async () => {
+		const keyStore = new D1NostrKeyStore(db, MASTER_KEY);
+		const eventStore = new D1NostrEventStore(db);
+		const secret = generateSecretKey();
+		const nsec = nip19.nsecEncode(secret);
+		const pubkey = getPublicKey(secret);
+		const destination = { id: 'nostr', type: 'nostr' } as never;
+
+		await keyStore.register('relaybot', 'nostr', nsec);
+		const resolve = keyStore.relayResolver();
+		expect(await resolve('relaybot', destination)).toBeNull(); // no kind 10002 yet
+
+		const signer = new PrivateKeySigner(secret);
+		const event = await signer.signEvent({
+			kind: 10002,
+			content: '',
+			tags: [
+				['r', 'wss://write.example'],
+				['r', 'wss://read.example', 'read'],
+			],
+			created_at: 1750000000,
+		});
+		await eventStore.save(event);
+		expect(await resolve('relaybot', destination)).toEqual(['wss://write.example']);
+		expect(pubkey).toBe(event.pubkey);
+		await keyStore.remove('relaybot', 'nostr');
+	});
+});
+
+describe('D1RunLock', () => {
+	it('grants the lock to a single acquirer and reclaims after release/expiry', async () => {
+		const lock = new D1RunLock(db, 60_000);
+		expect(await lock.acquire('lockbot', 'nostr')).toBe(true);
+		expect(await lock.acquire('lockbot', 'nostr')).toBe(false); // held
+		await lock.release('lockbot', 'nostr');
+		expect(await lock.acquire('lockbot', 'nostr')).toBe(true); // reclaimed
+		await lock.release('lockbot', 'nostr');
+
+		const expired = new D1RunLock(db, -1); // already-expired ttl
+		expect(await expired.acquire('lockbot2', 'nostr')).toBe(true);
+		expect(await expired.acquire('lockbot2', 'nostr')).toBe(true); // prior lock is expired
+		await expired.release('lockbot2', 'nostr');
 	});
 });

@@ -1,8 +1,7 @@
 import { verifyEvent } from 'nostr-tools/pure';
 import type { EventTemplate, NostrEvent } from 'nostr-tools/core';
+import { HTTPAuth } from 'nostr-tools/kinds';
 import type { Signer } from './signer.js';
-
-export const NIP98_KIND = 27235;
 
 export class Nip98Error extends Error {
 	readonly status = 401;
@@ -70,7 +69,7 @@ export async function verifyNip98Request(options: VerifyNip98Options): Promise<V
 		throw new Nip98Error('Malformed NIP-98 token');
 	}
 
-	if (event.kind !== NIP98_KIND) {
+	if (event.kind !== HTTPAuth) {
 		throw new Nip98Error(`Unexpected event kind: ${event.kind}`);
 	}
 	if (!verifyEvent(event)) {
@@ -126,7 +125,7 @@ export async function buildNip98Token(options: BuildNip98TokenOptions): Promise<
 		}
 	}
 	const template: EventTemplate = {
-		kind: NIP98_KIND,
+		kind: HTTPAuth,
 		content: '',
 		tags,
 		created_at: options.createdAt ?? Math.floor(Date.now() / 1000),

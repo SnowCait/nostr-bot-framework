@@ -2,8 +2,8 @@ import { Hono } from 'hono';
 import type { MiddlewareHandler } from 'hono';
 import { runBot, type BotDefinition, type BotReport } from '@sns-bot-framework/core';
 import { createAdminApp } from './admin.js';
-import type { MasterKeySource } from './crypto.js';
-import { D1StateStore } from './d1-state-store.js';
+import { timingSafeEqualString, type MasterKeySource } from './crypto.js';
+import { D1RunLock, D1StateStore } from './d1-state-store.js';
 import { nip98Auth, type AdminAuthVariables } from './nip98.js';
 import { D1NostrKeyStore } from './nostr-store.js';
 
@@ -68,6 +68,8 @@ export function createWorker(options: CreateWorkerOptions): BotWorker {
 			state: new D1StateStore(db),
 			env,
 			credentials: keyStore.credentialResolver(),
+			relays: keyStore.relayResolver(),
+			lock: new D1RunLock(db),
 			dryRun,
 		});
 	};
@@ -89,8 +91,9 @@ export function createWorker(options: CreateWorkerOptions): BotWorker {
 		if (
 			typeof token === 'string' &&
 			token.length > 0 &&
-			header === `Bearer ${token}` &&
-			isRunRequest
+			typeof header === 'string' &&
+			isRunRequest &&
+			timingSafeEqualString(header, `Bearer ${token}`)
 		) {
 			c.set('adminId', 'manual-token');
 			return next();

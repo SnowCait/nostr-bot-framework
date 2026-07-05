@@ -201,3 +201,39 @@ describe('admin worker', () => {
 		expect(response.status).toBe(404);
 	});
 });
+
+describe('admin worker without a master key configured', () => {
+	// masterKeyBinding points at an unset binding, so key-using endpoints must
+	// fail while feeds/phrases (which never touch the key) keep working.
+	const noKeyWorker = createWorker({
+		bots: [
+			defineBot({
+				id: 'phrases',
+				source: staticListSource(['a']),
+				destinations: [nostrDestination({ relays: ['wss://relay.invalid'] })],
+			}),
+		],
+		admin: { pubkeys: [nip19.npubEncode(adminPubkey)] },
+		masterKeyBinding: 'UNSET_MASTER_KEY',
+	});
+
+	const callNoKey = async (method: string, path: string): Promise<Response> => {
+		const url = `${ORIGIN}${path}`;
+		const headers = new Headers({
+			authorization: await buildNip98Token({ url, method, signer: adminSigner }),
+		});
+		const request = new Request(url, { method, headers });
+		const ctx = createExecutionContext();
+		const response = await noKeyWorker.fetch(request, env as Record<string, unknown>, ctx);
+		await waitOnExecutionContext(ctx);
+		return response;
+	};
+
+	it('serves feeds without a master key', async () => {
+		expect((await callNoKey('GET', '/admin/api/bots/phrases/feeds')).status).toBe(200);
+	});
+
+	it('fails key-dependent endpoints without a master key', async () => {
+		expect((await callNoKey('GET', '/admin/api/bots')).status).toBe(500);
+	});
+});

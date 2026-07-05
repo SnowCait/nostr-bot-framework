@@ -9,15 +9,17 @@ import {
 import {
 	buildMetadata,
 	buildRelayList,
+	Metadata,
 	PrivateKeySigner,
 	publishToRelays,
+	RelayList,
 	type NostrDestination,
 	type NostrEvent,
 	type RelayListEntry,
 } from '@sns-bot-framework/nostr';
 import { ADMIN_PAGE } from './admin-page.js';
 import type { MasterKeySource } from './crypto.js';
-import { D1StateStore } from './d1-state-store.js';
+import { D1RunLock, D1StateStore } from './d1-state-store.js';
 import { D1NostrEventStore, D1NostrKeyStore } from './nostr-store.js';
 import type { AdminAuthVariables } from './nip98.js';
 
@@ -62,15 +64,28 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 			return value;
 		});
 
+	// keyStore is lazy so endpoints that never touch keys (feeds/phrases) work
+	// even when MASTER_KEY is not configured.
 	const deps = (env: unknown) => {
 		const db = (env as Record<string, unknown>)[dbBinding] as D1Database | undefined;
 		if (!db) throw new Error(`D1 binding "${dbBinding}" not found on env`);
 		return {
 			db,
-			state: new D1StateStore(db),
-			keyStore: new D1NostrKeyStore(db, masterKeyOf(env)),
-			eventStore: new D1NostrEventStore(db),
+			state: () => new D1StateStore(db),
+			keyStore: () => new D1NostrKeyStore(db, masterKeyOf(env)),
+			eventStore: () => new D1NostrEventStore(db),
 		};
+	};
+
+	// Publish targets for admin-side profile/relay-list publishing: the stored
+	// kind 10002 write relays, falling back to the destination's code relays.
+	const resolveRelays = async (
+		keyStore: D1NostrKeyStore,
+		bot: BotDefinition,
+		destination: NostrDestination,
+	): Promise<string[]> => {
+		const resolved = await keyStore.relayResolver()(bot.id, destination);
+		return resolved ?? [...destination.relays];
 	};
 
 	const findBot = (botId: string): BotDefinition | undefined =>
@@ -84,7 +99,7 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	app.use('/api/*', options.auth);
 
 	app.get('/api/bots', async (c) => {
-		const { keyStore } = deps(c.env);
+		const keyStore = deps(c.env).keyStore();
 		const bots = await Promise.all(
 			options.bots.map(async (bot) => ({
 				id: bot.id,
@@ -155,7 +170,7 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.put('/api/bots/:botId/destinations/:destId/credential', async (c) => {
-		const { keyStore } = deps(c.env);
+		const keyStore = deps(c.env).keyStore();
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
 		const destination = findDestination(bot, c.req.param('destId'));
@@ -177,7 +192,7 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.delete('/api/bots/:botId/destinations/:destId/credential', async (c) => {
-		const { keyStore } = deps(c.env);
+		const keyStore = deps(c.env).keyStore();
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
 		await keyStore.remove(bot.id, c.req.param('destId'));
@@ -185,14 +200,16 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.get('/api/bots/:botId/destinations/:destId/profile', async (c) => {
-		const { keyStore, eventStore } = deps(c.env);
+		const d = deps(c.env);
+		const keyStore = d.keyStore();
+		const eventStore = d.eventStore();
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
 		const pubkey = await keyStore.pubkeyFor(bot.id, c.req.param('destId'));
 		if (!pubkey) return c.json({ profile: null, relays: null, published: {}, pubkey: null });
 		const [kind0, kind10002] = await Promise.all([
-			eventStore.get(pubkey, 0),
-			eventStore.get(pubkey, 10002),
+			eventStore.get(pubkey, Metadata),
+			eventStore.get(pubkey, RelayList),
 		]);
 		return c.json({
 			pubkey,
@@ -206,7 +223,9 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.put('/api/bots/:botId/destinations/:destId/profile', async (c) => {
-		const { keyStore, eventStore } = deps(c.env);
+		const d = deps(c.env);
+		const keyStore = d.keyStore();
+		const eventStore = d.eventStore();
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
 		const destination = findDestination(bot, c.req.param('destId'));
@@ -220,11 +239,12 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 			relays?: RelayListEntry[];
 		}>();
 		const signer = new PrivateKeySigner(secret);
+		const targetRelays = await resolveRelays(keyStore, bot, destination);
 
 		const results: Record<string, PublishResult[]> = {};
 		const publishStored = async (label: string, event: NostrEvent) => {
 			await eventStore.save(event);
-			const published = await publishToRelays(event, destination.relays);
+			const published = await publishToRelays(event, targetRelays);
 			if (published.some((result) => result.ok)) {
 				await eventStore.markPublished(event.pubkey, event.kind);
 			}
@@ -240,7 +260,9 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.post('/api/bots/:botId/destinations/:destId/profile/republish', async (c) => {
-		const { keyStore, eventStore } = deps(c.env);
+		const d = deps(c.env);
+		const keyStore = d.keyStore();
+		const eventStore = d.eventStore();
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
 		const destination = findDestination(bot, c.req.param('destId'));
@@ -250,12 +272,13 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 		const pubkey = await keyStore.pubkeyFor(bot.id, destination.id);
 		if (!pubkey) return c.json({ error: 'Register a key first' }, 400);
 		const body = await c.req.json<{ kinds?: number[] }>().catch(() => ({}) as { kinds?: number[] });
-		const kinds = body.kinds ?? [0, 10002];
+		const kinds = body.kinds ?? [Metadata, RelayList];
+		const targetRelays = await resolveRelays(keyStore, bot, destination);
 		const results: Record<string, PublishResult[]> = {};
 		for (const kind of kinds) {
 			const stored = await eventStore.get(pubkey, kind);
 			if (!stored) continue;
-			const published = await publishToRelays(stored.event, destination.relays);
+			const published = await publishToRelays(stored.event, targetRelays);
 			if (published.some((result) => result.ok)) {
 				await eventStore.markPublished(pubkey, kind);
 			}
@@ -265,14 +288,17 @@ export function createAdminApp(options: AdminAppOptions): Hono<Env> {
 	});
 
 	app.post('/api/bots/:botId/run', async (c) => {
-		const { state, keyStore } = deps(c.env);
+		const d = deps(c.env);
 		const bot = findBot(c.req.param('botId'));
 		if (!bot) return c.json({ error: 'Unknown bot' }, 404);
+		const keyStore = d.keyStore();
 		const env = c.env as Record<string, unknown>;
 		const report = await runBot(bot, {
-			state,
+			state: d.state(),
 			env,
 			credentials: keyStore.credentialResolver(),
+			relays: keyStore.relayResolver(),
+			lock: new D1RunLock(d.db),
 			dryRun: c.req.query('dryRun') === '1' || env.DRY_RUN === '1',
 		});
 		return c.json(report);

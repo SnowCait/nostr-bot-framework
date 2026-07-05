@@ -18,26 +18,42 @@ async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): P
 	}
 }
 
+async function publishToRelay(
+	event: NostrEvent,
+	url: string,
+	timeoutMs: number,
+): Promise<PublishResult> {
+	const connectP = Relay.connect(url);
+	let relay: Relay | undefined;
+	let done = false;
+	// Always handle the connect promise: if it opens after we time out, close it
+	// immediately; if it rejects late, swallow it (no unhandled rejection).
+	connectP.then(
+		(r) => {
+			relay = r;
+			if (done) r.close();
+		},
+		() => {},
+	);
+	try {
+		const r = await withTimeout(connectP, timeoutMs, `connect ${url}`);
+		await withTimeout(r.publish(event), timeoutMs, `publish to ${url}`);
+		return { target: url, ok: true, remoteId: event.id };
+	} catch (error) {
+		return { target: url, ok: false, error: String(error) };
+	} finally {
+		done = true;
+		relay?.close();
+	}
+}
+
 export async function publishToRelays(
 	event: NostrEvent,
 	relays: readonly string[],
 	options: PublishOptions = {},
 ): Promise<PublishResult[]> {
 	const timeoutMs = options.timeoutMs ?? 5000;
-	return Promise.all(
-		relays.map(async (url): Promise<PublishResult> => {
-			let relay: Relay | undefined;
-			try {
-				relay = await withTimeout(Relay.connect(url), timeoutMs, `connect ${url}`);
-				await withTimeout(relay.publish(event), timeoutMs, `publish to ${url}`);
-				return { target: url, ok: true, remoteId: event.id };
-			} catch (error) {
-				return { target: url, ok: false, error: String(error) };
-			} finally {
-				relay?.close();
-			}
-		}),
-	);
+	return Promise.all(relays.map((url) => publishToRelay(event, url, timeoutMs)));
 }
 
 export async function publishToWebhooks(
