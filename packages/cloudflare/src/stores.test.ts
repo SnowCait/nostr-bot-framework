@@ -3,10 +3,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { PrivateKeySigner } from '@sns-bot-framework/nostr';
-import { applySchema } from '../src/schema.js';
-import { decryptString, encryptString, importMasterKey } from '../src/crypto.js';
-import { D1StateStore } from '../src/d1-state-store.js';
-import { D1NostrEventStore, D1NostrKeyStore } from '../src/nostr-store.js';
+import { applySchema } from './schema.js';
+import { decryptString, encryptString, importMasterKey } from './crypto.js';
+import { D1StateStore } from './d1-state-store.js';
+import { D1NostrEventStore, D1NostrKeyStore } from './nostr-store.js';
 
 const db = (env as { DB: D1Database }).DB;
 const MASTER_KEY = (env as { MASTER_KEY: string }).MASTER_KEY;

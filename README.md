@@ -24,7 +24,7 @@ A bot framework for [Nostr](https://nostr.com/) (and, by design, other social ne
 
 ## Quick start
 
-Start from [`examples/worker`](./examples/worker):
+Requires Node.js 24+. Start from [`examples/worker`](./examples/worker):
 
 ```sh
 git clone https://github.com/SnowCait/nostr-bot-framework.git

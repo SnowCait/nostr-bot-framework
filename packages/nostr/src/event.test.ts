@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildMetadata, buildRelayList, buildTextNote, replyTags } from '../src/event.js';
+import { buildMetadata, buildRelayList, buildTextNote, replyTags } from './event.js';
 
 describe('buildTextNote', () => {
 	it('builds a kind 1 template', () => {

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 // Registers the MASTER_KEY Workers Secret and prepares .dev.vars for local dev.
+// Runs directly with Node.js 24+ (built-in type stripping).
 //
 // Default: prompts for a key you generated and saved in your password manager,
 // so a backup always exists. With --generate: generates a key, prints it once
@@ -11,10 +12,10 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const devVarsPath = join(root, '.dev.vars');
+const root: string = join(dirname(fileURLToPath(import.meta.url)), '..');
+const devVarsPath: string = join(root, '.dev.vars');
 
-function ensureDevVars() {
+function ensureDevVars(): void {
 	const existing = existsSync(devVarsPath) ? readFileSync(devVarsPath, 'utf8') : '';
 	if (/^MASTER_KEY=/m.test(existing)) {
 		console.log('.dev.vars already has a local MASTER_KEY, leaving it as-is.');
@@ -26,11 +27,12 @@ function ensureDevVars() {
 	console.log('Wrote a separate local dev key to .dev.vars (not for production).');
 }
 
-function putSecret(input) {
+function putSecret(input?: string): number {
 	const args = ['wrangler', 'secret', 'put', 'MASTER_KEY'];
-	const result = input
-		? spawnSync('npx', args, { cwd: root, input, stdio: ['pipe', 'inherit', 'inherit'] })
-		: spawnSync('npx', args, { cwd: root, stdio: 'inherit' });
+	const result =
+		input === undefined
+			? spawnSync('npx', args, { cwd: root, stdio: 'inherit' })
+			: spawnSync('npx', args, { cwd: root, input, stdio: ['pipe', 'inherit', 'inherit'] });
 	return result.status ?? 1;
 }
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey, verifyEvent } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
-import { credentialInfo, normalizeSecretKey, PrivateKeySigner } from '../src/signer.js';
+import { credentialInfo, normalizeSecretKey, PrivateKeySigner } from './signer.js';
 
 const secretKey = generateSecretKey();
 const hex = [...secretKey].map((b) => b.toString(16).padStart(2, '0')).join('');

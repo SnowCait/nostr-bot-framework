@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { defineBot, runBot } from '../src/bot.js';
-import { MemoryStateStore } from '../src/state.js';
-import { staticListSource } from '../src/source.js';
-import type { Destination, PublishResult, SourceItem } from '../src/types.js';
+import { defineBot, runBot } from './bot.js';
+import { MemoryStateStore } from './state.js';
+import { staticListSource } from './source.js';
+import type { Destination, PublishResult, SourceItem } from './types.js';
 
 function mockDestination(
 	overrides: Partial<Pick<Destination, 'id' | 'type'>> & {

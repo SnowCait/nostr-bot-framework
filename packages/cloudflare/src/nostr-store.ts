@@ -1,6 +1,10 @@
 import type { CredentialResolver } from '@sns-bot-framework/core';
-import { credentialInfo, npubFromPubkey, secretKeyToHex } from '@sns-bot-framework/nostr';
-import type { NostrEvent } from 'nostr-tools/core';
+import {
+	credentialInfo,
+	npubFromPubkey,
+	secretKeyToHex,
+	type NostrEvent,
+} from '@sns-bot-framework/nostr';
 import { decryptString, encryptString, importMasterKey, type MasterKeySource } from './crypto.js';
 
 export interface NostrKeyStatus {

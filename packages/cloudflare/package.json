@@ -41,6 +41,6 @@
 		"directory": "packages/cloudflare"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=24"
 	}
 }

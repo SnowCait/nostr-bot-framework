@@ -1,3 +1,4 @@
+export type { EventTemplate, NostrEvent } from 'nostr-tools/core';
 export {
 	PrivateKeySigner,
 	normalizeSecretKey,

@@ -30,6 +30,6 @@
 		"directory": "packages/core"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=24"
 	}
 }

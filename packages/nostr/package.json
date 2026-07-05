@@ -31,6 +31,6 @@
 		"directory": "packages/nostr"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=24"
 	}
 }

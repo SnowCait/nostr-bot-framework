@@ -24,7 +24,7 @@ English version: [README.md](./README.md)
 
 ## クイックスタート
 
-[`examples/worker`](./examples/worker) から始めます:
+Node.js 24 以上が必要です。[`examples/worker`](./examples/worker) から始めます:
 
 ```sh
 git clone https://github.com/SnowCait/nostr-bot-framework.git

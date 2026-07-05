@@ -12,9 +12,9 @@ import {
 	PrivateKeySigner,
 	publishToRelays,
 	type NostrDestination,
+	type NostrEvent,
 	type RelayListEntry,
 } from '@sns-bot-framework/nostr';
-import type { NostrEvent } from 'nostr-tools/core';
 import { ADMIN_PAGE } from './admin-page.js';
 import type { MasterKeySource } from './crypto.js';
 import { D1StateStore } from './d1-state-store.js';

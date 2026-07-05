@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { generateSecretKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { MemoryStateStore, type DestinationContext } from '@sns-bot-framework/core';
-import { nostrDestination } from '../src/destination.js';
-import { buildTextNote } from '../src/event.js';
+import { nostrDestination } from './destination.js';
+import { buildTextNote } from './event.js';
 
 const nsec = nip19.nsecEncode(generateSecretKey());
 

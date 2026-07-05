@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { generateSecretKey } from 'nostr-tools/pure';
-import { PrivateKeySigner } from '../src/signer.js';
-import { buildNip98Token, verifyNip98Request } from '../src/nip98.js';
+import { PrivateKeySigner } from './signer.js';
+import { buildNip98Token, verifyNip98Request } from './nip98.js';
 
 const signer = new PrivateKeySigner(generateSecretKey());
 const url = 'https://bot.example.com/admin/api/bots';

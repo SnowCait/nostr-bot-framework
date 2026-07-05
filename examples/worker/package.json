@@ -8,7 +8,7 @@
 		"deploy": "wrangler deploy",
 		"migrate": "wrangler d1 migrations apply nostr-bot",
 		"migrate:local": "wrangler d1 migrations apply nostr-bot --local",
-		"setup:master-key": "node scripts/setup-master-key.mjs"
+		"setup:master-key": "node scripts/setup-master-key.ts"
 	},
 	"dependencies": {
 		"@sns-bot-framework/cloudflare": "^0.1.0",
@@ -19,5 +19,8 @@
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20260620.0",
 		"wrangler": "^4.22.0"
+	},
+	"engines": {
+		"node": ">=24"
 	}
 }

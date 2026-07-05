@@ -1,5 +1,5 @@
 {
-	"name": "sns-bot-framework-monorepo",
+	"name": "sns-bot-framework",
 	"private": true,
 	"type": "module",
 	"workspaces": [
@@ -7,7 +7,7 @@
 		"examples/*"
 	],
 	"scripts": {
-		"build": "npm run build --workspaces --if-present",
+		"build": "npm run build -w @sns-bot-framework/core && npm run build -w @sns-bot-framework/nostr && npm run build -w @sns-bot-framework/cloudflare && npm run build -w example-worker",
 		"test": "npm run test --workspaces --if-present",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
@@ -20,6 +20,6 @@
 		"vitest": "^3.2.4"
 	},
 	"engines": {
-		"node": ">=22"
+		"node": ">=24"
 	}
 }

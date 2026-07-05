@@ -4,8 +4,8 @@ import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { defineBot, staticListSource } from '@sns-bot-framework/core';
 import { buildNip98Token, nostrDestination, PrivateKeySigner } from '@sns-bot-framework/nostr';
-import { applySchema } from '../src/schema.js';
-import { createWorker } from '../src/worker.js';
+import { applySchema } from './schema.js';
+import { createWorker } from './worker.js';
 
 const db = (env as { DB: D1Database }).DB;
 
