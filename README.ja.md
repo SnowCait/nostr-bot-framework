@@ -45,7 +45,7 @@ npm run setup:master-key:remote         # 生成もさせる場合: npm run setu
 npm run deploy
 ```
 
-スキーマは `@sns-bot-framework/cloudflare` が持ちます。`migrate:*` はまず `sns-bot-migrations` でフレームワークのマイグレーションファイルを `./migrations` へコピー(既存ファイルは上書きしません)し、その後 `wrangler d1 migrations apply` に渡します。マイグレーション番号 `0001–` はフレームワーク予約です。アプリ独自テーブルは `1001` 以降を使ってください。
+スキーマは `@sns-bot-framework/cloudflare` が持ちます。`migrate:*` はまず `sns-bot-migrations` でフレームワークのマイグレーションファイルを `./migrations` へコピー(既存ファイルは上書きしません)し、その後 `wrangler d1 migrations apply` に渡します。`migrations/` は通常の wrangler プロジェクト同様に版管理するため、example は同期された framework 分(`0001_init.sql`)とアプリ独自分(`1001_app.sql`)の両方をコミットしています。マイグレーション番号 `0001–` はフレームワーク予約です。アプリ独自テーブルは `1001` 以降を使ってください(実例: `examples/worker/migrations/1001_app.sql` と、それをクエリする RSS bot の `build` フック)。
 
 デプロイ後、`https://<your-worker>.workers.dev/admin` を開き、NIP-07 拡張(nos2x、Alby など)でサインインして各 bot の鍵(`nsec1...` または hex)を登録します。鍵は write-only で、画面には導出された npub しか表示されません。
 

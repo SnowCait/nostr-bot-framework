@@ -6,7 +6,6 @@ import { FEEDS, RELAYS } from './config.js';
 // Worker bindings available inside build hooks via ctx.env.
 interface Env {
 	DB: D1Database;
-	MEDIA?: R2Bucket;
 }
 
 // RSS bot: feeds are defined in config.ts, posts up to 3 new items per run.
@@ -19,14 +18,18 @@ const rssBot = defineBot({
 		nostrDestination({
 			relays: RELAYS,
 			// Escape hatch: build the kind 1 event freely. ctx.env exposes the
-			// Worker bindings, so R2/D1/etc. can drive non-standard posts.
-			build: (item, ctx) => {
+			// Worker bindings, so app-owned D1 tables can drive the post.
+			build: async (item, ctx) => {
 				const env = ctx.env as Env;
 				const { title, link } = item.data as { title: string; link: string };
 				const tags: string[][] = [['t', 'news']];
-				if (env.MEDIA) {
-					// e.g. upload an image to R2 and attach a NIP-92 imeta tag here.
-					tags.push(['t', 'media']);
+				// App-owned table (migrations/1001_app.sql); framework tables are internal.
+				const host = link ? new URL(link).host : '';
+				if (host) {
+					const row = await env.DB.prepare('SELECT hashtag FROM feed_hashtags WHERE host = ?')
+						.bind(host)
+						.first<{ hashtag: string }>();
+					if (row) tags.push(['t', row.hashtag]);
 				}
 				return buildTextNote({ content: `${title}\n${link}`, tags });
 			},

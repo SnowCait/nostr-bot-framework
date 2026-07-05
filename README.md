@@ -45,7 +45,7 @@ npm run setup:master-key:remote         # or: npm run setup:master-key:remote --
 npm run deploy
 ```
 
-The schema lives in `@sns-bot-framework/cloudflare`. `migrate:*` first runs `sns-bot-migrations`, which copies the framework's migration files into `./migrations` (existing files are never overwritten), then hands off to `wrangler d1 migrations apply`. Migration numbers `0001–` are reserved by the framework; number your own app tables from `1001` upward.
+The schema lives in `@sns-bot-framework/cloudflare`. `migrate:*` first runs `sns-bot-migrations`, which copies the framework's migration files into `./migrations` (existing files are never overwritten), then hands off to `wrangler d1 migrations apply`. The `migrations/` directory is version-controlled like any wrangler project, so the example commits both the synced framework migration (`0001_init.sql`) and its own (`1001_app.sql`). Migration numbers `0001–` are reserved by the framework; number your own app tables from `1001` upward — see `examples/worker/migrations/1001_app.sql` and the RSS bot's `build` hook, which queries that app-owned table.
 
 Then open `https://<your-worker>.workers.dev/admin`, sign in with a NIP-07 extension (nos2x, Alby, …), and register each bot's key (`nsec1...` or hex). Keys are write-only: the UI only ever shows the derived npub.
 

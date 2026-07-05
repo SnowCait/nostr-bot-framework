@@ -4,6 +4,3 @@ dist/
 .dev.vars
 *.log
 .DS_Store
-
-# Migrations synced from @sns-bot-framework/cloudflare via `npm run sync:migrations`
-examples/worker/migrations/
