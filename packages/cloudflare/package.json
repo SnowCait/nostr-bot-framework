@@ -1,0 +1,46 @@
+{
+	"name": "@sns-bot-framework/cloudflare",
+	"version": "0.1.0",
+	"description": "Cloudflare Workers adapter for sns-bot-framework: D1 stores, encrypted key storage, admin UI, worker factory",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"publint": "publint"
+	},
+	"dependencies": {
+		"@sns-bot-framework/core": "^0.1.0",
+		"@sns-bot-framework/nostr": "^0.1.0"
+	},
+	"peerDependencies": {
+		"hono": "^4.0.0"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.9.12",
+		"@cloudflare/workers-types": "^4.20260620.0",
+		"hono": "^4.8.3",
+		"nostr-tools": "^2.23.0",
+		"wrangler": "^4.22.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SnowCait/nostr-bot-framework.git",
+		"directory": "packages/cloudflare"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

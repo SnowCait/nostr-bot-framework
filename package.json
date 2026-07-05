@@ -1,0 +1,25 @@
+{
+	"name": "sns-bot-framework-monorepo",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"packages/*",
+		"examples/*"
+	],
+	"scripts": {
+		"build": "npm run build --workspaces --if-present",
+		"test": "npm run test --workspaces --if-present",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"publint": "npm run publint --workspaces --if-present"
+	},
+	"devDependencies": {
+		"prettier": "^3.6.2",
+		"publint": "^0.3.12",
+		"typescript": "^5.8.3",
+		"vitest": "^3.2.4"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

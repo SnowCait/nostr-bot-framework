@@ -1,0 +1,36 @@
+{
+	"name": "@sns-bot-framework/nostr",
+	"version": "0.1.0",
+	"description": "Nostr destination for sns-bot-framework: event building, signing, relay publishing, NIP-98",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"publint": "publint"
+	},
+	"dependencies": {
+		"@sns-bot-framework/core": "^0.1.0",
+		"nostr-tools": "^2.23.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SnowCait/nostr-bot-framework.git",
+		"directory": "packages/nostr"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}

@@ -1,0 +1,29 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "example-nostr-bot",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-06-01",
+	"triggers": {
+		// One schedule per bot; each bot declares which cron it reacts to.
+		"crons": ["*/30 * * * *", "0 * * * *"],
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "nostr-bot",
+			// Replace with the id from `wrangler d1 create nostr-bot`.
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations",
+		},
+	],
+	"vars": {
+		// Comma-separated npub or hex pubkeys allowed to use /admin.
+		"ADMIN_PUBKEYS": "",
+	},
+	"observability": {
+		"enabled": true,
+	},
+	// Secrets (set via `npm run setup:master-key` and `wrangler secret put`):
+	//   MASTER_KEY            encrypts bot keys stored in D1
+	//   MANUAL_TRIGGER_TOKEN  optional bearer token for POST /admin/api/bots/:botId/run
+}

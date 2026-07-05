@@ -1,0 +1,35 @@
+{
+	"name": "@sns-bot-framework/core",
+	"version": "0.1.0",
+	"description": "Platform-agnostic bot pipeline: sources, dedup state, and destination interface",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"sideEffects": false,
+	"scripts": {
+		"build": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"publint": "publint"
+	},
+	"dependencies": {
+		"fast-xml-parser": "^5.2.5"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/SnowCait/nostr-bot-framework.git",
+		"directory": "packages/core"
+	},
+	"engines": {
+		"node": ">=22"
+	}
+}
