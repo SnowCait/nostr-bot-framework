@@ -12,27 +12,31 @@
 			"import": "./dist/index.js"
 		}
 	},
+	"bin": {
+		"sns-bot-migrations": "./dist/bin/migrations.js",
+		"sns-bot-setup-master-key": "./dist/bin/setup-master-key.js"
+	},
 	"files": [
-		"dist"
+		"dist",
+		"migrations"
 	],
 	"sideEffects": false,
 	"scripts": {
-		"build": "tsc -p tsconfig.json",
+		"build": "tsc -p tsconfig.json && tsc -p tsconfig.bin.json",
 		"test": "vitest run",
 		"publint": "publint"
 	},
 	"dependencies": {
 		"@sns-bot-framework/core": "^0.1.0",
-		"@sns-bot-framework/nostr": "^0.1.0"
-	},
-	"peerDependencies": {
-		"hono": "^4.0.0"
+		"@sns-bot-framework/nostr": "^0.1.0",
+		"hono": "^4.8.3"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.9.12",
 		"@cloudflare/workers-types": "^4.20260620.0",
-		"hono": "^4.8.3",
+		"@types/node": "^24.0.10",
 		"nostr-tools": "^2.23.0",
+		"vitest": "^3.2.4",
 		"wrangler": "^4.22.0"
 	},
 	"repository": {

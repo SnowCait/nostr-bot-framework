@@ -25,6 +25,9 @@
 		"@sns-bot-framework/core": "^0.1.0",
 		"nostr-tools": "^2.23.0"
 	},
+	"devDependencies": {
+		"vitest": "^3.2.4"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/SnowCait/nostr-bot-framework.git",

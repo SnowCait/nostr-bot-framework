@@ -31,12 +31,12 @@ git clone https://github.com/SnowCait/nostr-bot-framework.git
 cd nostr-bot-framework && npm install && npm run build
 cd examples/worker
 
-# 1. データベース作成とマイグレーション
+# 1. データベース作成とフレームワークのマイグレーション適用
 npx wrangler d1 create nostr-bot        # 返ってきた id を wrangler.jsonc に記入
-npm run migrate
+npm run migrate:remote                  # 同梱マイグレーションを同期して適用
 
-# 2. マスターキーの登録(先にパスワードマネージャで生成・保存しておく)
-npm run setup:master-key                # 生成もさせる場合: npm run setup:master-key -- --generate
+# 2. 本番マスターキーの登録(先にパスワードマネージャで生成・保存しておく)
+npm run setup:master-key:remote         # 生成もさせる場合: npm run setup:master-key:remote -- --generate
 
 # 3. 管理画面を使う自分の pubkey を許可
 #    -> wrangler.jsonc の vars.ADMIN_PUBKEYS に npub か hex をカンマ区切りで設定
@@ -44,6 +44,8 @@ npm run setup:master-key                # 生成もさせる場合: npm run setu
 # 4. デプロイ
 npm run deploy
 ```
+
+スキーマは `@sns-bot-framework/cloudflare` が持ちます。`migrate:*` はまず `sns-bot-migrations` でフレームワークのマイグレーションファイルを `./migrations` へコピー(既存ファイルは上書きしません)し、その後 `wrangler d1 migrations apply` に渡します。マイグレーション番号 `0001–` はフレームワーク予約です。アプリ独自テーブルは `1001` 以降を使ってください。
 
 デプロイ後、`https://<your-worker>.workers.dev/admin` を開き、NIP-07 拡張(nos2x、Alby など)でサインインして各 bot の鍵(`nsec1...` または hex)を登録します。鍵は write-only で、画面には導出された npub しか表示されません。
 
@@ -98,14 +100,25 @@ curl -X POST "https://<your-worker>.workers.dev/admin/api/bots/rss-news/run?dryR
 
 ```sh
 cd examples/worker
-npm run migrate:local
-npm run dev             # wrangler dev --test-scheduled
+npm run setup:master-key:local   # .dev.vars に別のランダムキーを書き込む
+npm run migrate:local            # マイグレーションを同期してローカル D1 に適用
+npm run dev                      # wrangler dev --test-scheduled
 
 # cron をローカルで発火
 curl "http://localhost:8787/__scheduled?cron=*%2F30+*+*+*+*"
 ```
 
-`npm run setup:master-key` はローカル用に別のランダムキーを `.dev.vars` に書き込みます。開発中は `.dev.vars` に `DRY_RUN=1` を設定すると送信せずログ出力になります。
+`setup:master-key:local` は `.dev.vars` のみを変更します(本番に触れません)。`setup:master-key:remote` は `wrangler secret put` で本番シークレットを登録します。開発中は `.dev.vars` に `DRY_RUN=1` を設定すると送信せずログ出力になります。
+
+### ライブラリとして使う場合
+
+example をコピーせず自前の Worker を作る場合も、同じ手順でスキーマを取り込めます:
+
+```sh
+npx sns-bot-migrations                                    # ./migrations へコピー
+npx wrangler d1 migrations apply <DB_NAME> --remote
+npx sns-bot-setup-master-key --remote                     # ローカルは --local
+```
 
 ## 鍵管理と復旧
 

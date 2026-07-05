@@ -1,4 +1,3 @@
-export { SCHEMA_STATEMENTS, applySchema } from './schema.js';
 export {
 	importMasterKey,
 	encryptString,

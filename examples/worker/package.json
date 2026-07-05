@@ -6,15 +6,16 @@
 		"build": "tsc -p tsconfig.json",
 		"dev": "wrangler dev --test-scheduled",
 		"deploy": "wrangler deploy",
-		"migrate": "wrangler d1 migrations apply nostr-bot",
-		"migrate:local": "wrangler d1 migrations apply nostr-bot --local",
-		"setup:master-key": "node scripts/setup-master-key.ts"
+		"sync:migrations": "sns-bot-migrations",
+		"migrate:local": "sns-bot-migrations && wrangler d1 migrations apply nostr-bot --local",
+		"migrate:remote": "sns-bot-migrations && wrangler d1 migrations apply nostr-bot --remote",
+		"setup:master-key:local": "sns-bot-setup-master-key --local",
+		"setup:master-key:remote": "sns-bot-setup-master-key --remote"
 	},
 	"dependencies": {
 		"@sns-bot-framework/cloudflare": "^0.1.0",
 		"@sns-bot-framework/core": "^0.1.0",
-		"@sns-bot-framework/nostr": "^0.1.0",
-		"hono": "^4.8.3"
+		"@sns-bot-framework/nostr": "^0.1.0"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20260620.0",

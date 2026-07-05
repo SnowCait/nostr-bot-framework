@@ -31,12 +31,12 @@ git clone https://github.com/SnowCait/nostr-bot-framework.git
 cd nostr-bot-framework && npm install && npm run build
 cd examples/worker
 
-# 1. Create the database and apply migrations
+# 1. Create the database and apply the framework's migrations
 npx wrangler d1 create nostr-bot        # put the id into wrangler.jsonc
-npm run migrate
+npm run migrate:remote                  # syncs bundled migrations, then applies them
 
-# 2. Register the master key (generate & save one in your password manager first)
-npm run setup:master-key                # or: npm run setup:master-key -- --generate
+# 2. Register the production master key (generate & save one in your password manager first)
+npm run setup:master-key:remote         # or: npm run setup:master-key:remote -- --generate
 
 # 3. Allow your own pubkey to use the admin UI
 #    -> set ADMIN_PUBKEYS (npub or hex, comma-separated) in wrangler.jsonc vars
@@ -44,6 +44,8 @@ npm run setup:master-key                # or: npm run setup:master-key -- --gene
 # 4. Deploy
 npm run deploy
 ```
+
+The schema lives in `@sns-bot-framework/cloudflare`. `migrate:*` first runs `sns-bot-migrations`, which copies the framework's migration files into `./migrations` (existing files are never overwritten), then hands off to `wrangler d1 migrations apply`. Migration numbers `0001–` are reserved by the framework; number your own app tables from `1001` upward.
 
 Then open `https://<your-worker>.workers.dev/admin`, sign in with a NIP-07 extension (nos2x, Alby, …), and register each bot's key (`nsec1...` or hex). Keys are write-only: the UI only ever shows the derived npub.
 
@@ -98,14 +100,25 @@ curl -X POST "https://<your-worker>.workers.dev/admin/api/bots/rss-news/run?dryR
 
 ```sh
 cd examples/worker
-npm run migrate:local
-npm run dev             # wrangler dev --test-scheduled
+npm run setup:master-key:local   # writes a separate random key to .dev.vars
+npm run migrate:local            # syncs migrations, then applies them to the local D1
+npm run dev                      # wrangler dev --test-scheduled
 
 # fire a cron trigger locally
 curl "http://localhost:8787/__scheduled?cron=*%2F30+*+*+*+*"
 ```
 
-`npm run setup:master-key` writes a separate random key to `.dev.vars` for local use. Set `DRY_RUN=1` in `.dev.vars` to log events instead of publishing while developing.
+`setup:master-key:local` only touches `.dev.vars` (never production); `setup:master-key:remote` registers the production secret via `wrangler secret put`. Set `DRY_RUN=1` in `.dev.vars` to log events instead of publishing while developing.
+
+### Using the framework as a library
+
+If you build your own Worker instead of copying the example, pull the schema in the same way:
+
+```sh
+npx sns-bot-migrations                                    # copies migrations into ./migrations
+npx wrangler d1 migrations apply <DB_NAME> --remote
+npx sns-bot-setup-master-key --remote                     # or --local for .dev.vars
+```
 
 ## Key management and recovery
 

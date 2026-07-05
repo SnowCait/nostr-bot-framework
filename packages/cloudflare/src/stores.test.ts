@@ -1,19 +1,14 @@
 import { env } from 'cloudflare:test';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { PrivateKeySigner } from '@sns-bot-framework/nostr';
-import { applySchema } from './schema.js';
 import { decryptString, encryptString, importMasterKey } from './crypto.js';
 import { D1StateStore } from './d1-state-store.js';
 import { D1NostrEventStore, D1NostrKeyStore } from './nostr-store.js';
 
 const db = (env as { DB: D1Database }).DB;
 const MASTER_KEY = (env as { MASTER_KEY: string }).MASTER_KEY;
-
-beforeAll(async () => {
-	await applySchema(db);
-});
 
 describe('crypto', () => {
 	it('round-trips and fails with a different master key', async () => {

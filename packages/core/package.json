@@ -24,6 +24,9 @@
 	"dependencies": {
 		"fast-xml-parser": "^5.2.5"
 	},
+	"devDependencies": {
+		"vitest": "^3.2.4"
+	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/SnowCait/nostr-bot-framework.git",

@@ -1,13 +1,10 @@
 import { createExecutionContext, env, waitOnExecutionContext } from 'cloudflare:test';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { defineBot, staticListSource } from '@sns-bot-framework/core';
 import { buildNip98Token, nostrDestination, PrivateKeySigner } from '@sns-bot-framework/nostr';
-import { applySchema } from './schema.js';
 import { createWorker } from './worker.js';
-
-const db = (env as { DB: D1Database }).DB;
 
 const adminSecret = generateSecretKey();
 const adminSigner = new PrivateKeySigner(adminSecret);
@@ -56,10 +53,6 @@ async function call(
 	await waitOnExecutionContext(ctx);
 	return response;
 }
-
-beforeAll(async () => {
-	await applySchema(db);
-});
 
 describe('admin worker', () => {
 	it('serves the admin page without auth', async () => {

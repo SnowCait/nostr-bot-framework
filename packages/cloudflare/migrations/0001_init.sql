@@ -1,4 +1,5 @@
--- Keep in sync with SCHEMA_STATEMENTS in @sns-bot-framework/cloudflare.
+-- Canonical schema for @sns-bot-framework/cloudflare.
+-- Distributed via `npx sns-bot-migrations` and applied with `wrangler d1 migrations apply`.
 CREATE TABLE IF NOT EXISTS published_items (
 	bot_id TEXT NOT NULL,
 	destination_id TEXT NOT NULL,
