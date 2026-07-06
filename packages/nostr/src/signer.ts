@@ -1,18 +1,11 @@
 import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import type { EventTemplate, NostrEvent } from 'nostr-tools/core';
+import { bytesToHex, hexToBytes } from 'nostr-tools/utils';
 
 export interface Signer {
 	getPublicKey(): Promise<string>;
 	signEvent(template: EventTemplate): Promise<NostrEvent>;
-}
-
-function hexToBytes(hex: string): Uint8Array {
-	const bytes = new Uint8Array(hex.length / 2);
-	for (let i = 0; i < bytes.length; i++) {
-		bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-	}
-	return bytes;
 }
 
 export function normalizeSecretKey(secret: string): Uint8Array {
@@ -61,7 +54,7 @@ export function normalizePubkey(value: string): string {
 }
 
 export function secretKeyToHex(secret: string): string {
-	return [...normalizeSecretKey(secret)].map((b) => b.toString(16).padStart(2, '0')).join('');
+	return bytesToHex(normalizeSecretKey(secret));
 }
 
 export class PrivateKeySigner implements Signer {

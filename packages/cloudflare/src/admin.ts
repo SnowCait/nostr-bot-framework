@@ -17,7 +17,7 @@ import {
 	type NostrEvent,
 	type RelayListEntry,
 } from '@sns-bot-framework/nostr';
-import { ADMIN_PAGE } from './admin-page.js';
+import { ADMIN_PAGE } from './admin/page.js';
 import type { MasterKeySource } from './crypto.js';
 import { D1RunLock, D1StateStore } from './d1-state-store.js';
 import { D1NostrEventStore, D1NostrKeyStore } from './nostr-store.js';

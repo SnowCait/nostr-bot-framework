@@ -15,7 +15,7 @@ export {
 	type NostrKeyStatus,
 	type StoredNostrEvent,
 } from './nostr-store.js';
-export { nip98Auth, type Nip98AuthOptions, type AdminAuthVariables } from './nip98.js';
+export { httpAuth, type HttpAuthOptions, type AdminAuthVariables } from './nip98.js';
 export { createAdminApp, type AdminAppOptions } from './admin.js';
 export { createWorker, type CreateWorkerOptions, type BotWorker } from './worker.js';
-export { ADMIN_PAGE } from './admin-page.js';
+export { ADMIN_PAGE } from './admin/page.js';

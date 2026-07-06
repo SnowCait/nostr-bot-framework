@@ -4,7 +4,7 @@ import { runBot, type BotDefinition, type BotReport } from '@sns-bot-framework/c
 import { createAdminApp } from './admin.js';
 import { timingSafeEqualString, type MasterKeySource } from './crypto.js';
 import { D1RunLock, D1StateStore } from './d1-state-store.js';
-import { nip98Auth, type AdminAuthVariables } from './nip98.js';
+import { httpAuth, type AdminAuthVariables } from './nip98.js';
 import { D1NostrKeyStore } from './nostr-store.js';
 
 export interface CreateWorkerOptions {
@@ -76,7 +76,7 @@ export function createWorker(options: CreateWorkerOptions): BotWorker {
 
 	const baseAuth: MiddlewareHandler =
 		options.admin?.auth ??
-		nip98Auth({
+		httpAuth({
 			pubkeys: (env) =>
 				options.admin?.pubkeys ?? ((env as Record<string, string>).ADMIN_PUBKEYS as string),
 		});

@@ -7,7 +7,7 @@ import type {
 } from '@sns-bot-framework/core';
 import type { EventTemplate, NostrEvent } from 'nostr-tools/core';
 import { buildTextNote, replyTags } from './event.js';
-import { publishToRelays, publishToWebhooks } from './publish.js';
+import { publishToRelays, publishToWebhooks, SimplePool } from './publish.js';
 import { credentialInfo, PrivateKeySigner } from './signer.js';
 
 export type NostrBuildResult = EventTemplate | EventTemplate[] | null;
@@ -115,17 +115,29 @@ export function nostrDestination(options: NostrDestinationOptions): NostrDestina
 
 			const results: PublishResult[] = [];
 			let allEventsOk = events.length > 0;
-			for (const event of events) {
-				const relayResults = await publishToRelays(event, relays, publishOptions);
-				results.push(...relayResults);
-				const webhookResults = options.webhooks?.length
-					? await publishToWebhooks(event, options.webhooks, publishOptions)
-					: [];
-				results.push(...webhookResults);
-				// An event is delivered if it reached at least one primary target:
-				// relays when configured, otherwise the webhook mirrors.
-				const primary = relays.length > 0 ? relayResults : webhookResults;
-				if (!primary.some((r) => r.ok)) allEventsOk = false;
+			// Reuse one pool across a thread's events so relay connections are shared.
+			const pool =
+				relays.length > 0
+					? new SimplePool({ enablePing: false, enableReconnect: false })
+					: undefined;
+			try {
+				for (const event of events) {
+					const relayResults = await publishToRelays(event, relays, {
+						...publishOptions,
+						...(pool ? { pool } : {}),
+					});
+					results.push(...relayResults);
+					const webhookResults = options.webhooks?.length
+						? await publishToWebhooks(event, options.webhooks, publishOptions)
+						: [];
+					results.push(...webhookResults);
+					// An event is delivered if it reached at least one primary target:
+					// relays when configured, otherwise the webhook mirrors.
+					const primary = relays.length > 0 ? relayResults : webhookResults;
+					if (!primary.some((r) => r.ok)) allEventsOk = false;
+				}
+			} finally {
+				pool?.destroy();
 			}
 			const outcome: PublishOutcome = { ok: allEventsOk, results };
 			if (events[0]) outcome.remoteId = events[0].id;

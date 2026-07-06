@@ -2,6 +2,9 @@ export type MasterKeySource = string | { get(): Promise<string> };
 
 const MIN_MASTER_KEY_LENGTH = 16;
 
+// Hand-rolled base64 (via btoa/atob, always present in the Workers runtime) to
+// keep this package's runtime deps to @sns-bot-framework/* + hono, rather than
+// pulling in @scure/base just to encode the AES-GCM ciphertext stored in D1.
 function toBase64(bytes: Uint8Array): string {
 	let binary = '';
 	for (const byte of bytes) {

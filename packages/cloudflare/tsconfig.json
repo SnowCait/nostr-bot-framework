@@ -3,8 +3,10 @@
 	"compilerOptions": {
 		"rootDir": "src",
 		"outDir": "dist",
-		"types": ["@cloudflare/workers-types"]
+		"types": ["@cloudflare/workers-types"],
+		"jsx": "react-jsx",
+		"jsxImportSource": "hono/jsx"
 	},
 	"include": ["src"],
-	"exclude": ["src/**/*.test.ts"]
+	"exclude": ["src/**/*.test.ts", "src/admin/client.ts"]
 }

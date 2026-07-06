@@ -5,7 +5,8 @@
 		"declaration": false,
 		"declarationMap": false,
 		"sourceMap": false,
+		"lib": ["ES2023", "DOM", "DOM.Iterable"],
 		"types": []
 	},
-	"include": ["src", "worker-configuration.d.ts"]
+	"include": ["src/admin/client.ts"]
 }

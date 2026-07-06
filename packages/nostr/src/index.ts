@@ -28,10 +28,10 @@ export {
 	type NostrBuildResult,
 } from './destination.js';
 export {
-	verifyNip98Request,
-	buildNip98Token,
-	Nip98Error,
-	type VerifyNip98Options,
-	type VerifiedNip98,
-	type BuildNip98TokenOptions,
+	verifyHttpAuth,
+	buildHttpAuthToken,
+	HttpAuthError,
+	type VerifyHttpAuthOptions,
+	type VerifiedHttpAuth,
+	type BuildHttpAuthTokenOptions,
 } from './nip98.js';

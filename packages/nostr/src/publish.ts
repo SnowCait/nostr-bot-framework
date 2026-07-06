@@ -1,50 +1,15 @@
-import { Relay } from 'nostr-tools/relay';
+import { SimplePool } from 'nostr-tools/pool';
 import type { NostrEvent } from 'nostr-tools/core';
 import type { PublishResult } from '@sns-bot-framework/core';
 
 export interface PublishOptions {
 	timeoutMs?: number;
+	/** Reuse a pool across events (e.g. a thread). Omit to use a short-lived one. */
+	pool?: SimplePool;
 }
 
-async function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-	let timer: ReturnType<typeof setTimeout> | undefined;
-	const timeout = new Promise<never>((_, reject) => {
-		timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
-	});
-	try {
-		return await Promise.race([promise, timeout]);
-	} finally {
-		clearTimeout(timer);
-	}
-}
-
-async function publishToRelay(
-	event: NostrEvent,
-	url: string,
-	timeoutMs: number,
-): Promise<PublishResult> {
-	const connectP = Relay.connect(url);
-	let relay: Relay | undefined;
-	let done = false;
-	// Always handle the connect promise: if it opens after we time out, close it
-	// immediately; if it rejects late, swallow it (no unhandled rejection).
-	connectP.then(
-		(r) => {
-			relay = r;
-			if (done) r.close();
-		},
-		() => {},
-	);
-	try {
-		const r = await withTimeout(connectP, timeoutMs, `connect ${url}`);
-		await withTimeout(r.publish(event), timeoutMs, `publish to ${url}`);
-		return { target: url, ok: true, remoteId: event.id };
-	} catch (error) {
-		return { target: url, ok: false, error: String(error) };
-	} finally {
-		done = true;
-		relay?.close();
-	}
+function newPool(): SimplePool {
+	return new SimplePool({ enablePing: false, enableReconnect: false });
 }
 
 export async function publishToRelays(
@@ -52,8 +17,28 @@ export async function publishToRelays(
 	relays: readonly string[],
 	options: PublishOptions = {},
 ): Promise<PublishResult[]> {
+	if (relays.length === 0) return [];
 	const timeoutMs = options.timeoutMs ?? 5000;
-	return Promise.all(relays.map((url) => publishToRelay(event, url, timeoutMs)));
+	const pool = options.pool ?? newPool();
+	try {
+		// ensureRelay throws on connect failure and relay.publish rejects on relay
+		// failure, giving clean per-relay success/failure (SimplePool.publish instead
+		// resolves connect failures to a "connection failure: …" string). The pool
+		// owns and reuses the sockets, so there is no leak or unhandled rejection.
+		return await Promise.all(
+			relays.map(async (url): Promise<PublishResult> => {
+				try {
+					const relay = await pool.ensureRelay(url, { connectionTimeout: timeoutMs });
+					await relay.publish(event);
+					return { target: url, ok: true, remoteId: event.id };
+				} catch (error) {
+					return { target: url, ok: false, error: String(error) };
+				}
+			}),
+		);
+	} finally {
+		if (!options.pool) pool.destroy();
+	}
 }
 
 export async function publishToWebhooks(
@@ -81,3 +66,5 @@ export async function publishToWebhooks(
 		}),
 	);
 }
+
+export { SimplePool };

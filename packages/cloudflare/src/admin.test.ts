@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { generateSecretKey, getPublicKey } from 'nostr-tools/pure';
 import * as nip19 from 'nostr-tools/nip19';
 import { defineBot, staticListSource } from '@sns-bot-framework/core';
-import { buildNip98Token, nostrDestination, PrivateKeySigner } from '@sns-bot-framework/nostr';
+import { buildHttpAuthToken, nostrDestination, PrivateKeySigner } from '@sns-bot-framework/nostr';
 import { createWorker } from './worker.js';
 
 const adminSecret = generateSecretKey();
@@ -38,13 +38,13 @@ async function call(
 	if (options.bearer) {
 		headers.set('authorization', `Bearer ${options.bearer}`);
 	} else if (options.signer) {
-		const tokenOptions: Parameters<typeof buildNip98Token>[0] = {
+		const tokenOptions: Parameters<typeof buildHttpAuthToken>[0] = {
 			url,
 			method,
 			signer: options.signer,
 		};
 		if (body !== undefined) tokenOptions.body = body;
-		headers.set('authorization', await buildNip98Token(tokenOptions));
+		headers.set('authorization', await buildHttpAuthToken(tokenOptions));
 	}
 	if (body !== undefined) headers.set('content-type', 'application/json');
 	const request = new Request(url, { method, headers, ...(body === undefined ? {} : { body }) });
@@ -220,7 +220,7 @@ describe('admin worker without a master key configured', () => {
 	const callNoKey = async (method: string, path: string): Promise<Response> => {
 		const url = `${ORIGIN}${path}`;
 		const headers = new Headers({
-			authorization: await buildNip98Token({ url, method, signer: adminSigner }),
+			authorization: await buildHttpAuthToken({ url, method, signer: adminSigner }),
 		});
 		const request = new Request(url, { method, headers });
 		const ctx = createExecutionContext();

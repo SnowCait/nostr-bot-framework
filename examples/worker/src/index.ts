@@ -3,11 +3,6 @@ import { buildTextNote, nostrDestination } from '@sns-bot-framework/nostr';
 import { createWorker, d1PhraseSource } from '@sns-bot-framework/cloudflare';
 import { FEEDS, RELAYS } from './config.js';
 
-// Worker bindings available inside build hooks via ctx.env.
-interface Env {
-	DB: D1Database;
-}
-
 // RSS bot: feeds are defined in config.ts, posts up to 3 new items per run.
 const rssBot = defineBot({
 	id: 'rss-news',

@@ -1,11 +1,11 @@
 import type { MiddlewareHandler } from 'hono';
-import { Nip98Error, normalizePubkey, verifyNip98Request } from '@sns-bot-framework/nostr';
+import { HttpAuthError, normalizePubkey, verifyHttpAuth } from '@sns-bot-framework/nostr';
 
 export type AdminAuthVariables = {
 	adminId: string;
 };
 
-export interface Nip98AuthOptions {
+export interface HttpAuthOptions {
 	/**
 	 * Allowed admin pubkeys (npub or hex). A function receives env and may
 	 * return an array or a comma-separated string (e.g. env.ADMIN_PUBKEYS).
@@ -14,7 +14,7 @@ export interface Nip98AuthOptions {
 	maxAgeSeconds?: number;
 }
 
-function resolvePubkeys(options: Nip98AuthOptions, env: unknown): string[] {
+function resolvePubkeys(options: HttpAuthOptions, env: unknown): string[] {
 	const raw = typeof options.pubkeys === 'function' ? options.pubkeys(env) : options.pubkeys;
 	const list = typeof raw === 'string' ? raw.split(',') : (raw ?? []);
 	return list
@@ -23,8 +23,8 @@ function resolvePubkeys(options: Nip98AuthOptions, env: unknown): string[] {
 		.map(normalizePubkey);
 }
 
-/** AdminAuth implementation backed by NIP-98 (kind 27235 HTTP auth). */
-export function nip98Auth(options: Nip98AuthOptions): MiddlewareHandler {
+/** AdminAuth middleware backed by NIP-98 HTTP auth. */
+export function httpAuth(options: HttpAuthOptions): MiddlewareHandler {
 	return async (c, next) => {
 		let allowed: string[];
 		try {
@@ -39,7 +39,7 @@ export function nip98Auth(options: Nip98AuthOptions): MiddlewareHandler {
 			const method = c.req.method.toUpperCase();
 			const body =
 				method === 'GET' || method === 'HEAD' ? null : await c.req.raw.clone().arrayBuffer();
-			const verifyOptions: Parameters<typeof verifyNip98Request>[0] = {
+			const verifyOptions: Parameters<typeof verifyHttpAuth>[0] = {
 				authorization: c.req.header('authorization') ?? null,
 				url: c.req.url,
 				method,
@@ -48,7 +48,7 @@ export function nip98Auth(options: Nip98AuthOptions): MiddlewareHandler {
 			if (options.maxAgeSeconds !== undefined) {
 				verifyOptions.maxAgeSeconds = options.maxAgeSeconds;
 			}
-			const { pubkey } = await verifyNip98Request(verifyOptions);
+			const { pubkey } = await verifyHttpAuth(verifyOptions);
 			if (!allowed.includes(pubkey)) {
 				return c.json({ error: 'Pubkey not allowed' }, 403);
 			}
@@ -56,7 +56,7 @@ export function nip98Auth(options: Nip98AuthOptions): MiddlewareHandler {
 			await next();
 			return;
 		} catch (error) {
-			if (error instanceof Nip98Error) {
+			if (error instanceof HttpAuthError) {
 				return c.json({ error: error.message }, 401);
 			}
 			throw error;

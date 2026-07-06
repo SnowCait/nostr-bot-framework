@@ -4,3 +4,7 @@ dist/
 .dev.vars
 *.log
 .DS_Store
+
+# Generated at build time
+*.generated.ts
+worker-configuration.d.ts
