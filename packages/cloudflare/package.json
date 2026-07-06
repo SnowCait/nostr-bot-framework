@@ -34,7 +34,7 @@
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.9.12",
 		"@cloudflare/workers-types": "^4.20260620.0",
-		"@types/node": "^24.0.10",
+		"@types/node": "^26.0.1",
 		"esbuild": "^0.25.5",
 		"nostr-tools": "^2.23.0",
 		"vitest": "^3.2.4",
